@@ -1,5 +1,5 @@
-cat << 'EOF' > README.md
-# 🤖 Memory-Augmented Personal Agent
+
+#  Memory-Augmented Personal Agent
 
 A lightweight, local, state-of-the-art conversational AI agent designed to dynamically extract, store, and recall personal context, developer tech stacks, and user preferences across chat sessions.
 
@@ -7,14 +7,14 @@ This project was designed, architected, and developed by **[Valentina Kiyungi](h
 
 ---
 
-## 💡 Key Features
+##  Key Features
 * **Dynamic Memory Extraction:** Automatically analyzes conversational turns in the background to capture permanent details, preferences, and project updates.
 * **Semantic Context Retrieval:** Searches an in-memory vector database using semantic similarity matching to inject relevant context into the model's system prompt.
 * **Modern Orchestration:** Built utilizing **LangGraph** to model state, execution nodes, and background evaluations reliably.
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 * **Orchestration:** LangGraph (StateGraph Workflow)
 * **LLM Engine:** Google GenAI SDK (`gemini-2.5-flash` / `gemini-3.5-flash`)
 * **Vector Database:** Qdrant Client (In-Memory Semantic Storage)
@@ -22,7 +22,7 @@ This project was designed, architected, and developed by **[Valentina Kiyungi](h
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 ```text
 memory-agent/
 ├── src/

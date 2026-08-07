@@ -84,7 +84,7 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
----
+
 2. Environment Configuration
 ```Code snippet
 Gemini Credentials
@@ -95,12 +95,12 @@ QDRANT_HOST=localhost
 QDRANT_PORT=6333
 QDRANT_COLLECTION_NAME=developer_memory
 ```
----
+
 3. Start Local Vector Memory Store
 ```Bash
 docker run -d -p 6333:6333 qdrant/qdrant
 ```
----
+
 4. Run the Agent
 ```Bash
 Run interactive CLI session
@@ -109,7 +109,7 @@ python main.py
 Or start the REST server
 uvicorn app.api:app --reload --port 8000
 ```
----
+
 Example Memory Recall Flow
 ```Plaintext
 Session 1:

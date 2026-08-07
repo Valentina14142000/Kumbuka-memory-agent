@@ -72,7 +72,7 @@ API & Runtime: FastAPI, Uvicorn, Pydantic v2
 
 1. Installation
 ```Bash
-git clone [https://github.com/Valentina14142000/memory-agent.git](https://github.com/Valentina14142000/memory-agent.git)
+git clone github repository
 cd memory-agent
 python -m venv venv
 source venv/bin/activate

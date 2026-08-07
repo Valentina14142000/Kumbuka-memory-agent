@@ -44,6 +44,8 @@ graph LR
     LLM --> AgentResponse([Context-Aware Response]):::input
 ```
 
+---
+
 ### Key Features
 
 Dual-Tier Memory Engine: Combines short-term conversational session state with long-term vector-backed episodic memory.
@@ -55,6 +57,8 @@ Sub-100ms Semantic Recall: Uses Qdrant vector payload indexing to fetch historic
 Dynamic Context Summarization: Prevents prompt bloat by compressing older chat turns while preserving high-value context.
 
 Full Local Execution: Runs completely locally with Docker-backed Qdrant and lightweight API interfaces.
+
+---
 
 ### Tech Stack
 
@@ -68,6 +72,8 @@ Storage & Checkpoints: MemorySaver / SQLite Checkpointer
 
 API & Runtime: FastAPI, Uvicorn, Pydantic v2
 
+---
+
 ### Getting Started
 
 1. Installation
@@ -78,6 +84,7 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
+---
 2. Environment Configuration
 ```Code snippet
 Gemini Credentials
@@ -88,10 +95,12 @@ QDRANT_HOST=localhost
 QDRANT_PORT=6333
 QDRANT_COLLECTION_NAME=developer_memory
 ```
+---
 3. Start Local Vector Memory Store
 ```Bash
 docker run -d -p 6333:6333 qdrant/qdrant
 ```
+---
 4. Run the Agent
 ```Bash
 Run interactive CLI session
@@ -100,6 +109,7 @@ python main.py
 Or start the REST server
 uvicorn app.api:app --reload --port 8000
 ```
+---
 Example Memory Recall Flow
 ```Plaintext
 Session 1:
@@ -110,6 +120,8 @@ Session 2 (3 days later):
 User: "How should I structure a new service for vector retrieval?"
 Agent: "Since you use FastAPI and Qdrant with LangGraph, here is a production boilerp
 ```
+
+---
 
 ### 📄 License
 MIT License. Free for open-source and commercial adaptation.

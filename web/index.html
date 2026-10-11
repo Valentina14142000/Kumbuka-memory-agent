@@ -1,65 +1,99 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Memory Agent</title>
+<title>Kumbuka | An AI that remembers</title>
 <style>
-:root{--bg:#f4f6f5;--ink:#15211c;--mute:#5b6a63;--card:#fff;--line:#d3ddd8;--acc:#1f6f5c}
-@media (prefers-color-scheme:dark){:root{--bg:#101815;--ink:#e6efeb;--mute:#93a49c;--card:#18231e;--line:#2b3a34;--acc:#4cc2a1}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
-main{max-width:1000px;margin:0 auto;padding:16px;display:grid;gap:14px;grid-template-columns:2fr 1fr}
-@media(max-width:760px){main{grid-template-columns:1fr}}
-h1{font-size:1.4rem;margin:0}h2{font-size:1rem;margin:0 0 8px}.sub{color:var(--mute);font-size:.85rem}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
-#log{height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px}
-.m{padding:8px 12px;border-radius:10px;max-width:85%;white-space:pre-wrap}
-.user{align-self:flex-end;background:var(--acc);color:#fff}.bot{align-self:flex-start;border:1px solid var(--line)}
-.note{align-self:flex-start;color:var(--mute);font-size:.8rem}.err{align-self:flex-start;color:#b3402e}
-form{display:flex;gap:8px;margin-top:10px}input{flex:1;font:inherit;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
-button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px}
-button.p{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}button:disabled{opacity:.5}
-li{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.9rem}ul{list-style:none;margin:0;padding:0}
+:root{
+  --bg1:#eef0ff;--bg2:#f6f0ff;--bg3:#fff0f6;
+  --ink:#1b1736;--mute:#6a6585;--card:rgba(255,255,255,.82);--line:#ddd8f3;
+  --acc:#6d4aff;--acc2:#9b5cff;--user:#6d4aff;--bot:#ffffff;--err:#c0392b;--field:#f6f4ff;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg1:#0d0b1f;--bg2:#161033;--bg3:#1f0f2e;
+  --ink:#ece9ff;--mute:#a29cc6;--card:rgba(28,22,56,.78);--line:#35295f;
+  --acc:#8b6dff;--acc2:#b57cff;--user:#6d4aff;--bot:#221a45;--err:#ff8a7a;--field:#1a1438;
+}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:linear-gradient(135deg,var(--bg1),var(--bg2) 50%,var(--bg3)) fixed}
+main{max-width:760px;margin:0 auto;padding:18px}
+.card{background:var(--card);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 30px rgba(60,40,140,.08)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:#fff;font-weight:800;font-size:20px}
+h1{font-size:1.5rem;margin:0;line-height:1.1}.tag{margin:0;color:var(--mute);font-size:.85rem}
+h2{font-size:1rem;margin:0 0 10px}
+.notice{font-size:.78rem;color:var(--mute);margin:12px 0}
+#log{height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px}
+.m{padding:10px 14px;border-radius:14px;max-width:88%;word-wrap:break-word}
+.user{align-self:flex-end;background:linear-gradient(135deg,var(--user),var(--acc2));color:#fff;white-space:pre-wrap;border-bottom-right-radius:4px}
+.bot{align-self:flex-start;background:var(--bot);border:1px solid var(--line);border-bottom-left-radius:4px}
+.bot p{margin:0 0 8px}.bot p:last-child{margin:0}.bot h4{margin:10px 0 4px;font-size:1rem}
+.bot ul,.bot ol{margin:4px 0 8px;padding-left:22px}.bot hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+.bot code{background:var(--field);padding:1px 5px;border-radius:5px;font-size:.88em}
+.note{align-self:flex-start;font-size:.8rem;color:var(--acc);background:var(--field);padding:3px 10px;border-radius:999px}
+.err{align-self:flex-start;color:var(--err);font-size:.9rem}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{font-size:.8rem;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer}
+form{display:flex;gap:8px;margin-top:12px}
+input{flex:1;font:inherit;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--field);color:var(--ink)}
+input:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-offset:1px}
+button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);padding:8px 14px}
+button.p{background:linear-gradient(135deg,var(--acc),var(--acc2));border:0;color:#fff;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+ul#mem{list-style:none;margin:0;padding:0}
+#mem li{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+#mem button{font-size:.75rem;padding:3px 9px;border-radius:8px;color:var(--mute)}
+.sub{color:var(--mute);font-size:.85rem}
+.dots span{display:inline-block;width:6px;height:6px;margin:0 2px;border-radius:50%;background:var(--mute);animation:b 1s infinite}
+.dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,80%,100%{opacity:.3}40%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.dots span{animation:none}}
 </style></head><body>
 <main>
 <section class="card">
-  <h1>Memory Agent</h1>
-  <p class="sub">A chat that remembers lasting facts you tell it (your tools, preferences, projects) and uses them in later conversations. Demo notice: messages go to Google Gemini and memories are stored in a cloud database. Please do not share sensitive information. You can delete memories at any time.</p>
+  <div class="brand"><div class="logo" aria-hidden="true">K</div>
+    <div><h1>Kumbuka</h1><p class="tag">An AI that remembers you</p></div></div>
+  <p class="notice">Tell Kumbuka about your tools, preferences, and projects, and it will use them in later conversations. Messages go to Google Gemini and memories are kept in a cloud database, so please don't share sensitive information.</p>
   <div id="log" aria-live="polite"></div>
-  <form id="f"><input id="t" maxlength="2000" placeholder="Tell me about your stack, or ask something..." autocomplete="off" aria-label="Message"><button class="p" id="b">Send</button></form>
+  <div class="chips" id="chips"></div>
+  <form id="f"><input id="t" maxlength="2000" placeholder="Tell me about your work, or ask something..." autocomplete="off" aria-label="Message"><button class="p" id="b">Send</button></form>
 </section>
-<aside class="card"><h2>What I remember about you</h2><ul id="mem"></ul><p class="sub" id="none">Nothing yet. Try: "I build APIs with FastAPI and prefer Qdrant."</p></aside>
 </main>
 <script>
-const KEY="memory-agent-id";
-let uid=localStorage.getItem(KEY);
-if(!uid){uid=crypto.randomUUID();localStorage.setItem(KEY,uid)}
+const KEY="kumbuka-id";
+let uid=localStorage.getItem(KEY)||localStorage.getItem("memory-agent-id");
+if(!uid){uid=crypto.randomUUID()}
+localStorage.setItem(KEY,uid);
 const $=id=>document.getElementById(id);
-function add(cls,text){const d=document.createElement("div");d.className="m "+cls;d.textContent=text;$("log").appendChild(d);$("log").scrollTop=1e9;return d}
-function addNote(cls,text){const d=add(cls,text);d.className=cls;return d}
-async function loadMem(){
-  try{
-    const rows=await (await fetch("/memories?user_id="+uid)).json();
-    const ul=$("mem");ul.innerHTML="";
-    rows.forEach(r=>{const li=document.createElement("li");const s=document.createElement("span");s.textContent=r.content;
-      const x=document.createElement("button");x.textContent="Forget";x.onclick=async()=>{await fetch("/memories/"+r.id+"?user_id="+uid,{method:"DELETE"});loadMem()};
-      li.append(s,x);ul.appendChild(li)});
-    $("none").style.display=rows.length?"none":"block";
-  }catch(e){}
+function md(src){
+  const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const inl=s=>esc(s).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<em>$2</em>");
+  let out="",list=null;const close=()=>{if(list){out+="</"+list+">";list=null}};
+  for(const raw of src.split("\n")){
+    const l=raw.trimEnd();let m;
+    if(m=l.match(/^#{1,4}\s+(.*)/)){close();out+="<h4>"+inl(m[1])+"</h4>"}
+    else if(/^\s*[-*]\s+/.test(l)){if(list!=="ul"){close();out+="<ul>";list="ul"}out+="<li>"+inl(l.replace(/^\s*[-*]\s+/,""))+"</li>"}
+    else if(m=l.match(/^\s*\d+\.\s+(.*)/)){if(list!=="ol"){close();out+="<ol>";list="ol"}out+="<li>"+inl(m[1])+"</li>"}
+    else if(/^-{3,}$/.test(l.trim())){close();out+="<hr>"}
+    else if(!l.trim()){close()}
+    else{close();out+="<p>"+inl(l)+"</p>"}
+  }
+  close();return out;
 }
+function add(cls,text,html){const d=document.createElement("div");d.className=cls==="note"||cls==="err"?cls:"m "+cls;
+  if(html)d.innerHTML=html;else d.textContent=text;$("log").appendChild(d);$("log").scrollTop=1e9;return d}
+const EX=["I build APIs with FastAPI","I prefer Qdrant over Pinecone","I'm learning TypeScript"];
+EX.forEach(t=>{const c=document.createElement("button");c.type="button";c.className="chip";c.textContent=t;c.onclick=()=>{$("t").value=t;$("t").focus()};$("chips").appendChild(c)});
 $("f").onsubmit=async e=>{
   e.preventDefault();const m=$("t").value.trim();if(!m)return;
-  $("t").value="";add("user",m);$("b").disabled=true;const wait=add("bot","Thinking...");
+  $("t").value="";add("user",m);$("b").disabled=true;
+  const wait=add("bot","","<span class='dots'><span></span><span></span><span></span></span>");
   try{
     const r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid,message:m})});
-    const d=await r.json();
-    wait.remove();
-    if(!r.ok){addNote("err",typeof d.detail==="string"?d.detail:"Something went wrong.")}
-    else{
-      add("bot",d.reply);
-      d.memories_saved.forEach(s=>addNote("note","Remembered: "+s));
-      loadMem();
-    }
-  }catch(err){wait.remove();addNote("err","Could not reach the server. It may be waking up, so try again in a minute.")}
+    const d=await r.json();wait.remove();
+    if(!r.ok){add("err",typeof d.detail==="string"?d.detail:"Something went wrong. Please try again.")}
+    else{add("bot","",md(d.reply));d.memories_saved.forEach(s=>add("note","Remembered: "+s))}
+  }catch(err){wait.remove();add("err","Could not reach the server. It may be waking up, so try again in a minute.")}
   $("b").disabled=false;$("t").focus();
 };
-loadMem();
 </script></body></html>

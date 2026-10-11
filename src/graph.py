@@ -72,7 +72,7 @@ def memory_node(state: AgentState):
     prompt = (
         "From the user's message below, extract lasting facts they stated about themselves: "
         "preferences, tech stack, projects, constraints. Write each as one short self-contained "
-        "sentence. Ignore questions, small talk, and anything the user did not say. "
+        "sentence. Ignore questions, small talk, one-off tasks or requests (for example what they want to cook or write today), and anything the user did not say. "
         "Return an empty list if there is nothing worth remembering.\n\n"
         f"User message: {user_text}"
     )

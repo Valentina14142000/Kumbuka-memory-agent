@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 from collections import defaultdict, deque
@@ -10,12 +11,15 @@ from pydantic import BaseModel, Field
 from src import memory
 from src.graph import chat
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("kumbuka")
+
 ID = r"^[A-Za-z0-9_-]+$"
 RATE = int(os.getenv("CHAT_PER_HOUR", "30"))
 WEB = Path(__file__).resolve().parent.parent / "web"
 _hits: dict[str, deque] = defaultdict(deque)
 
-app = FastAPI(title="Memory Agent")
+app = FastAPI(title="Kumbuka")
 
 
 class ChatIn(BaseModel):
@@ -51,16 +55,29 @@ def chat_endpoint(body: ChatIn, request: Request):
     try:
         return chat(body.user_id, body.message)
     except RuntimeError as e:
+        log.error("Chat failed: %s", e)
         raise HTTPException(502, str(e))
+    except Exception:
+        log.exception("Unexpected chat error")
+        raise HTTPException(500, "Unexpected error while chatting. Check the server logs.")
 
 
 @app.get("/memories")
 def memories(user_id: str = Query(..., min_length=3, max_length=64, pattern=ID)):
-    return memory.list_memories(user_id)
+    try:
+        return memory.list_memories(user_id)
+    except Exception as e:
+        log.exception("Listing memories failed")
+        raise HTTPException(503, f"Memory store error: {type(e).__name__}: {e}")
 
 
 @app.delete("/memories/{memory_id}")
 def forget(memory_id: str, user_id: str = Query(..., min_length=3, max_length=64, pattern=ID)):
-    if not memory.delete_memory(user_id, memory_id):
+    try:
+        deleted = memory.delete_memory(user_id, memory_id)
+    except Exception as e:
+        log.exception("Deleting memory failed")
+        raise HTTPException(503, f"Memory store error: {type(e).__name__}: {e}")
+    if not deleted:
         raise HTTPException(404, "Memory not found")
     return {"deleted": memory_id}

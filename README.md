@@ -1,127 +1,86 @@
+# Kumbuka
 
-# Memory Agent 
+**An AI chat that remembers you.** *Kumbuka* means "remember" in Swahili.
 
-[![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Orchestration](https://img.shields.io/badge/LangGraph-State_Persistence-orange?style=for-the-badge)](https://langchain-ai.github.io/langgraph/)
-[![LLM Engine](https://img.shields.io/badge/Google_Gemini-2.5_Flash-4285F4?style=for-the-badge&logo=google)](https://deepmind.google/technologies/gemini/)
-[![Vector Memory](https://img.shields.io/badge/Qdrant-Semantic_Index-red?style=for-the-badge&logo=qdrant)](https://qdrant.tech/)
+**Live demo:** https://YOUR-RENDER-ADDRESS
+(Free hosting: the first load can take up to a minute while the server wakes up. Please don't share sensitive information.)
 
-> **A local, memory-augmented conversational AI agent built using LangGraph, Google Gemini, and Qdrant to dynamically extract, index, and recall personalized developer context across chat sessions.**
+Tell Kumbuka about your tools, preferences, and projects. It extracts the lasting facts, stores them as vectors, and recalls the relevant ones in later conversations, even after you close the page.
 
----
+## How it works
 
-##  Overview
+1. **Recall:** your newest message is embedded and matched against your stored memories in Qdrant.
+2. **Answer:** Gemini replies using the recalled facts and your last 12 messages (short-term memory, kept by a LangGraph checkpointer).
+3. **Remember:** your message is scanned for lasting facts you stated about yourself. New, non-duplicate facts are embedded and stored.
 
-Standard chat models lose user preferences, tech stack context, and past project constraints once session windows reset. `memory-agent` solves this by decoupling short-term conversational execution from long-term semantic memory retention.
+One-off requests ("how do I bake a cake?") are not meant to be saved. Memories are separated per visitor by an anonymous ID stored in the browser.
 
-Using an autonomous extraction loop, `memory-agent` analyzes ongoing developer interactions, distills facts (tech stack preferences, architectural patterns, coding standards), and indexes them into **Qdrant**. On future queries, contextually relevant historical memories are dynamically retrieved and injected back into the LLM prompt.
+## Tech stack
 
----
+Python, FastAPI, LangGraph, Google Gemini (`google-genai`), Qdrant (local mode or Qdrant Cloud), vanilla HTML/CSS/JS front end.
 
-##  Memory Architecture & Lifecycle
+## Run locally
 
-```mermaid
-graph LR
-    classDef input fill:#0284c7,color:#fff,stroke:#0369a1,stroke-width:2px;
-    classDef memory fill:#7c3aed,color:#fff,stroke:#6d28d9,stroke-width:2px;
-    classDef process fill:#059669,color:#fff,stroke:#047857,stroke-width:2px;
-    classDef storage fill:#db2777,color:#fff,stroke:#be185d,stroke-width:2px;
-
-    UserMsg([User Input]):::input --> Extract[Memory Extractor Agent]:::process
-    
-    subgraph Dual-Tier Memory System
-        Extract -->|Short-term State| WorkingMem[(LangGraph Session Checkpoint)]:::storage
-        Extract -->|Semantic Indexing| QdrantVec[(Qdrant Vector DB)]:::storage
-    end
-    
-    WorkingMem --> Compressor[Context Summarizer]:::memory
-    QdrantVec -->|Sub-100ms Payload Match| SemanticSearch[Episodic Recall Engine]:::memory
-    
-    Compressor --> PromptInjector[Prompt Assembler]:::process
-    SemanticSearch --> PromptInjector
-    
-    PromptInjector --> LLM[Google Gemini 2.5 Flash]:::process
-    LLM --> AgentResponse([Context-Aware Response]):::input
-```
-
----
-
-### Key Features
-
-Dual-Tier Memory Engine: Combines short-term conversational session state with long-term vector-backed episodic memory.
-
-Automatic Fact Extraction: Asynchronously extracts tech stack context, code preferences, and project goals without requiring manual prompt tags.
-
-Sub-100ms Semantic Recall: Uses Qdrant vector payload indexing to fetch historical preferences in real-time.
-
-Dynamic Context Summarization: Prevents prompt bloat by compressing older chat turns while preserving high-value context.
-
-Full Local Execution: Runs completely locally with Docker-backed Qdrant and lightweight API interfaces.
-
----
-
-### Tech Stack
-
-Framework & Orchestration: LangGraph, LangChain Core
-
-LLM: Google Gemini 2.5 Flash
-
-Vector Store: Qdrant (Vector indexing & payload search)
-
-Storage & Checkpoints: MemorySaver / SQLite Checkpointer
-
-API & Runtime: FastAPI, Uvicorn, Pydantic v2
-
----
-
-### Getting Started
-
-1. Installation
-```Bash
-git clone github repository
-cd memory-agent
-python -m venv venv
-source venv/bin/activate
+```bash
+git clone https://github.com/Valentina14142000/kumbuka.git
+cd kumbuka
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+echo "GEMINI_API_KEY=your-key" > .env
+python -m pytest -v                       # tests need no API key
+python -m uvicorn src.api:app --port 8000 # web app at http://127.0.0.1:8000
+python app.py                             # or: terminal chat
 ```
 
-2. Environment Configuration
-```Code snippet
-Gemini Credentials
-GEMINI_API_KEY=your_google_gemini_api_key
+Get a free key at [Google AI Studio](https://aistudio.google.com). Local mode stores memories in `qdrant_data/` and needs no Docker. Only one process can use that folder at a time, so stop the terminal chat before starting the web app.
 
-Qdrant Memory Store
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
-QDRANT_COLLECTION_NAME=developer_memory
-```
+## Configuration
 
-3. Start Local Vector Memory Store
-```Bash
-docker run -d -p 6333:6333 qdrant/qdrant
-```
+| Variable | Purpose | Default |
+|---|---|---|
+| `GEMINI_API_KEY` | Gemini key (required) | none |
+| `GEMINI_MODELS` | Chat models, tried in order | `gemini-3.8-flash,gemini-3.5-flash` |
+| `EMBED_MODEL`, `VECTOR_SIZE` | Embedding model and its dimension | `gemini-embedding-001`, `768` |
+| `QDRANT_URL`, `QDRANT_API_KEY` | Use Qdrant Cloud instead of local files | unset |
+| `RECALL_THRESHOLD` | Minimum similarity to recall a memory | `0.55` |
+| `CHAT_PER_HOUR` | Messages per IP per hour | `30` |
 
-4. Run the Agent
-```Bash
-Run interactive CLI session
-python main.py
+Model names change over time. If you see a 404, set `GEMINI_MODELS` or `EMBED_MODEL` to names your key supports.
 
-Or start the REST server
-uvicorn app.api:app --reload --port 8000
-```
+## API
 
-Example Memory Recall Flow
-```Plaintext
-Session 1:
-User: "I build my AI agents using LangGraph and FastAPI, and I prefer Qdrant over Pinecone."
-Agent: "Got it! I've stored your tech stack preferences."
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/chat` | `{user_id, message}` returns the reply, memories used, memories saved |
+| `GET` | `/memories?user_id=` | List a visitor's memories |
+| `DELETE` | `/memories/{id}?user_id=` | Delete one memory |
+| `GET` | `/health` | Liveness check |
 
-Session 2 (3 days later):
-User: "How should I structure a new service for vector retrieval?"
-Agent: "Since you use FastAPI and Qdrant with LangGraph, here is a production boilerp
-```
+## Deploy (Render + Qdrant Cloud)
 
----
+1. Create a free cluster at cloud.qdrant.io and copy its URL and an API key.
+2. On Render, create a Web Service from this repo. Build: `pip install -r requirements.txt`. Start: `uvicorn src.api:app --host 0.0.0.0 --port $PORT`. Health check: `/health`.
+3. Set `GEMINI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`, and `PYTHON_VERSION=3.13.3`.
 
-### 📄 License
-MIT License. Free for open-source and commercial adaptation.
+The web app and API are served by the same service, so no CORS setup is needed.
+
+## Limitations and privacy
+
+- Messages are sent to Google Gemini. The free tier may use submitted content to improve Google's products, so use non-sensitive information only.
+- Visitors are identified only by a random ID in their browser. Anyone who has that ID can read those memories, and clearing browser data loses access.
+- Short-term chat history lives in server memory and resets on restart. Long-term memories persist in Qdrant.
+- Memories come from a model's judgment and can occasionally be wrong or miss facts.
+- Free tiers (Render, Qdrant Cloud, Gemini) have limits and cold starts, and all visitors share one Gemini quota.
+
+## Roadmap
+
+- [x] Vector memory with per-visitor separation and duplicate detection
+- [x] Retries and model fallback
+- [x] Web UI and tests
+- [ ] "Forget everything" control in the UI
+- [ ] Persistent chat history
+- [ ] Evaluation set for memory extraction quality
+
+## License
+
+MIT

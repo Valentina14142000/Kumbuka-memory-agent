@@ -1,62 +1,41 @@
 import os
 from pathlib import Path
-from typing import Optional
 
-try:
-    from dotenv import load_dotenv
-except ImportError:  # pragma: no cover
-    load_dotenv = None
+from dotenv import load_dotenv
+from google import genai
 
-try:
-    from google import genai
-except ImportError:  # pragma: no cover
-    genai = None
-
-try:
-    from qdrant_client import QdrantClient
-except ImportError:  # pragma: no cover
-    QdrantClient = None
-
-# Locate the root directory and the .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
-ENV_PATH = BASE_DIR / ".env"
+load_dotenv(BASE_DIR / ".env")
+
+CHAT_MODELS = [
+    m.strip()
+    for m in os.getenv("GEMINI_MODELS", "gemini-3.8-flash,gemini-3.5-flash").split(",")
+    if m.strip()
+]
+EMBED_MODEL = os.getenv("EMBED_MODEL", "gemini-embedding-001")
+VECTOR_SIZE = int(os.getenv("VECTOR_SIZE", "768"))
+
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
+QDRANT_URL = os.getenv("QDRANT_URL", "")  # optional: use a Qdrant server instead of local files
+QDRANT_PATH = os.getenv("QDRANT_PATH", str(BASE_DIR / "qdrant_data"))
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "developer_memory")
+
+DUPLICATE_THRESHOLD = float(os.getenv("DUPLICATE_THRESHOLD", "0.92"))
+RECALL_THRESHOLD = float(os.getenv("RECALL_THRESHOLD", "0.55"))
+HISTORY_WINDOW = int(os.getenv("HISTORY_WINDOW", "12"))
+
+_client = None
 
 
-def _load_environment() -> str:
-    """Loads environment variables and retrieves the Gemini API Key."""
-    if load_dotenv is not None:
-        load_dotenv(dotenv_path=ENV_PATH, override=True)
-
-    # First check standard developer key, fallback to standard google key
+def api_key() -> str:
     return os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
 
 
-def _build_ai_client(api_key: str):
-    """Initializes the standard Gemini Google GenAI Client."""
-    if not api_key or genai is None:
-        return None
-    return genai.Client(api_key=api_key)
-
-
-def _build_qdrant_client():
-    """Initializes an in-memory local Qdrant Client."""
-    if QdrantClient is None:
-        return None
-    return QdrantClient(":memory:")
-
-
-# Initialize configurations
-api_key = _load_environment()
-
-if not api_key:
-    print("\n⚠️  [Config Warning]: No Gemini API key found in the environment or .env file.")
-else:
-    display_value = api_key[:8] + "..." if len(api_key) > 8 else api_key
-    print(f"\n✅ [Config Success]: API Key loaded successfully (starts with: {display_value})")
-
-ai = _build_ai_client(api_key)
-qdrant_client = _build_qdrant_client()
-
-# Constant configuration properties
-COLLECTION_NAME = "personal_memories"
-VECTOR_SIZE = 768  # Native dimension for text-embedding-004
+def get_client():
+    global _client
+    if _client is None:
+        key = api_key()
+        if not key:
+            raise RuntimeError("No Gemini API key found. Put GEMINI_API_KEY=... in the .env file.")
+        _client = genai.Client(api_key=key)
+    return _client

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Agent</title>
+<style>
+:root{--bg:#f4f6f5;--ink:#15211c;--mute:#5b6a63;--card:#fff;--line:#d3ddd8;--acc:#1f6f5c}
+@media (prefers-color-scheme:dark){:root{--bg:#101815;--ink:#e6efeb;--mute:#93a49c;--card:#18231e;--line:#2b3a34;--acc:#4cc2a1}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:16px;display:grid;gap:14px;grid-template-columns:2fr 1fr}
+@media(max-width:760px){main{grid-template-columns:1fr}}
+h1{font-size:1.4rem;margin:0}h2{font-size:1rem;margin:0 0 8px}.sub{color:var(--mute);font-size:.85rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+#log{height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px}
+.m{padding:8px 12px;border-radius:10px;max-width:85%;white-space:pre-wrap}
+.user{align-self:flex-end;background:var(--acc);color:#fff}.bot{align-self:flex-start;border:1px solid var(--line)}
+.note{align-self:flex-start;color:var(--mute);font-size:.8rem}.err{align-self:flex-start;color:#b3402e}
+form{display:flex;gap:8px;margin-top:10px}input{flex:1;font:inherit;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}button:disabled{opacity:.5}
+li{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.9rem}ul{list-style:none;margin:0;padding:0}
+</style></head><body>
+<main>
+<section class="card">
+  <h1>Memory Agent</h1>
+  <p class="sub">A chat that remembers lasting facts you tell it (your tools, preferences, projects) and uses them in later conversations. Demo notice: messages go to Google Gemini and memories are stored in a cloud database. Please do not share sensitive information. You can delete memories at any time.</p>
+  <div id="log" aria-live="polite"></div>
+  <form id="f"><input id="t" maxlength="2000" placeholder="Tell me about your stack, or ask something..." autocomplete="off" aria-label="Message"><button class="p" id="b">Send</button></form>
+</section>
+<aside class="card"><h2>What I remember about you</h2><ul id="mem"></ul><p class="sub" id="none">Nothing yet. Try: "I build APIs with FastAPI and prefer Qdrant."</p></aside>
+</main>
+<script>
+const KEY="memory-agent-id";
+let uid=localStorage.getItem(KEY);
+if(!uid){uid=crypto.randomUUID();localStorage.setItem(KEY,uid)}
+const $=id=>document.getElementById(id);
+function add(cls,text){const d=document.createElement("div");d.className="m "+cls;d.textContent=text;$("log").appendChild(d);$("log").scrollTop=1e9;return d}
+function addNote(cls,text){const d=add(cls,text);d.className=cls;return d}
+async function loadMem(){
+  try{
+    const rows=await (await fetch("/memories?user_id="+uid)).json();
+    const ul=$("mem");ul.innerHTML="";
+    rows.forEach(r=>{const li=document.createElement("li");const s=document.createElement("span");s.textContent=r.content;
+      const x=document.createElement("button");x.textContent="Forget";x.onclick=async()=>{await fetch("/memories/"+r.id+"?user_id="+uid,{method:"DELETE"});loadMem()};
+      li.append(s,x);ul.appendChild(li)});
+    $("none").style.display=rows.length?"none":"block";
+  }catch(e){}
+}
+$("f").onsubmit=async e=>{
+  e.preventDefault();const m=$("t").value.trim();if(!m)return;
+  $("t").value="";add("user",m);$("b").disabled=true;const wait=add("bot","Thinking...");
+  try{
+    const r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid,message:m})});
+    const d=await r.json();
+    wait.remove();
+    if(!r.ok){addNote("err",typeof d.detail==="string"?d.detail:"Something went wrong.")}
+    else{
+      add("bot",d.reply);
+      d.memories_saved.forEach(s=>addNote("note","Remembered: "+s));
+      loadMem();
+    }
+  }catch(err){wait.remove();addNote("err","Could not reach the server. It may be waking up, so try again in a minute.")}
+  $("b").disabled=false;$("t").focus();
+};
+loadMem();
+</script></body></html>

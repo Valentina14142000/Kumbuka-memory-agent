@@ -1,38 +1,39 @@
-from langchain_core.messages import HumanMessage
-from src.graph import compiled_graph
-from src.memory import ensure_collection
+import os
 
-def run_agent_loop():
-    print("🤖 Memory-Augmented Personal Agent Initialized!")
-    print("Start chatting (Type 'exit' or 'quit' to stop).\n")
-    
+from src.graph import chat
+from src.memory import ensure_collection, list_memories
+
+
+def main() -> None:
+    user_id = os.getenv("MEMORY_USER_ID", "default-user")
     ensure_collection()
-    state = {"messages": []}
-    
+    print(f"Memory Agent ready (user: {user_id}). Commands: /memories, exit\n")
     while True:
         try:
-            user_input = input("You: ")
-            if user_input.lower() in ["exit", "quit"]:
-                print("Goodbye!")
-                break
-                
-            if not user_input.strip():
-                continue
-            
-            # 1. Update State with current user message
-            state["messages"] = state.get("messages", []) + [HumanMessage(content=user_input)]
-            
-            # 2. Run the graph compilation pipeline
-            output = compiled_graph.invoke(state)
-            
-            # 3. Retrieve response from state and update conversation session
-            state = output
-            latest_response = state["messages"][-1].content
-            print(f"\nAgent: {latest_response}\n")
-            
-        except KeyboardInterrupt:
+            text = input("You: ").strip()
+        except (KeyboardInterrupt, EOFError):
             print("\nGoodbye!")
             break
+        if not text:
+            continue
+        if text.lower() in {"exit", "quit"}:
+            print("Goodbye!")
+            break
+        if text == "/memories":
+            rows = list_memories(user_id)
+            print("\n".join(f"  - {r['content']}" for r in rows) if rows else "  (no memories yet)")
+            continue
+        try:
+            out = chat(user_id, text)
+        except RuntimeError as e:
+            print(f"\n[error] {e}\n")
+            continue
+        if out["memories_used"]:
+            print(f"  (recalled {len(out['memories_used'])} memories)")
+        for m in out["memories_saved"]:
+            print(f"  [saved] {m}")
+        print(f"\nAgent: {out['reply']}\n")
+
 
 if __name__ == "__main__":
-    run_agent_loop()
+    main()

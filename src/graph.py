@@ -19,6 +19,7 @@ class AgentState(TypedDict, total=False):
     user_id: str
     retrieved_memories: list[str]
     saved_memories: list[str]
+    memory_error: str
 
 
 def _last_human(state: AgentState) -> str:
@@ -34,7 +35,7 @@ def retrieve_node(state: AgentState):
         return {"retrieved_memories": retrieve_memories(state["user_id"], _last_human(state), limit=3)}
     except Exception as e:  # memory trouble must not break the chat
         log.warning("Memory recall failed: %s", e)
-        return {"retrieved_memories": []}
+        return {"retrieved_memories": [], "memory_error": f"{type(e).__name__}: {str(e)[:150]}"}
 
 
 def agent_node(state: AgentState):
@@ -90,7 +91,7 @@ def memory_node(state: AgentState):
         return {"saved_memories": saved}
     except Exception as e:
         log.warning("Memory extraction failed: %s", e)
-        return {"saved_memories": []}
+        return {"saved_memories": [], "memory_error": f"{type(e).__name__}: {str(e)[:150]}"}
 
 
 workflow = StateGraph(AgentState)
@@ -113,6 +114,7 @@ def chat(user_id: str, message: str) -> dict:
             "user_id": user_id,
             "retrieved_memories": [],
             "saved_memories": [],
+            "memory_error": "",
         },
         config={"configurable": {"thread_id": user_id}},
     )
@@ -120,4 +122,5 @@ def chat(user_id: str, message: str) -> dict:
         "reply": str(out["messages"][-1].content),
         "memories_used": out.get("retrieved_memories", []),
         "memories_saved": out.get("saved_memories", []),
+        "memory_error": out.get("memory_error", ""),
     }

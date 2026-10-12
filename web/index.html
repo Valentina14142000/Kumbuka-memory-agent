@@ -53,7 +53,7 @@ ul#mem{list-style:none;margin:0;padding:0}
 <section class="card">
   <div class="brand"><div class="logo" aria-hidden="true">K</div>
     <div><h1>Kumbuka</h1><p class="tag">An AI that remembers you</p></div></div>
-  <p class="notice">Tell Kumbuka about your tools, preferences, and projects, and it will use them in later conversations. Messages go to Google Gemini and memories are kept in a cloud database, so please don't share sensitive information.</p>
+  <p class="notice">Tell Kumbuka about your work, or ask something to help you</p>
   <div id="log" aria-live="polite"></div>
   <div class="chips" id="chips"></div>
   <form id="f"><input id="t" maxlength="2000" placeholder="Tell me about your work, or ask something..." autocomplete="off" aria-label="Message"><button class="p" id="b">Send</button></form>
@@ -82,18 +82,35 @@ function md(src){
 }
 function add(cls,text,html){const d=document.createElement("div");d.className=cls==="note"||cls==="err"?cls:"m "+cls;
   if(html)d.innerHTML=html;else d.textContent=text;$("log").appendChild(d);$("log").scrollTop=1e9;return d}
-const EX=["I build APIs with FastAPI","I prefer Qdrant over Pinecone","I'm learning TypeScript"];
-EX.forEach(t=>{const c=document.createElement("button");c.type="button";c.className="chip";c.textContent=t;c.onclick=()=>{$("t").value=t;$("t").focus()};$("chips").appendChild(c)});
-$("f").onsubmit=async e=>{
-  e.preventDefault();const m=$("t").value.trim();if(!m)return;
-  $("t").value="";add("user",m);$("b").disabled=true;
+const STARTERS=["I'm working on a new project","Here's my tech stack","I prefer short, direct answers"];
+function setChips(list){const box=$("chips");box.innerHTML="";list.forEach(t=>{const c=document.createElement("button");c.type="button";c.className="chip";c.textContent=t;c.onclick=()=>send(t);box.appendChild(c)})}
+setChips(STARTERS);
+let busy=false,turn=0;
+async function send(m){
+  m=(m||"").trim();if(!m||busy)return;
+  busy=true;const my=++turn;$("t").value="";$("b").disabled=true;setChips([]);add("user",m);
   const wait=add("bot","","<span class='dots'><span></span><span></span><span></span></span>");
+  let reply=null;
   try{
     const r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid,message:m})});
     const d=await r.json();wait.remove();
     if(!r.ok){add("err",typeof d.detail==="string"?d.detail:"Something went wrong. Please try again.")}
-    else{add("bot","",md(d.reply));d.memories_saved.forEach(s=>add("note","Remembered: "+s))}
+    else{
+      reply=d.reply;add("bot","",md(d.reply));
+      d.memories_saved.forEach(x=>add("note","Remembered: "+x));
+      if(d.memory_error)add("note","Memory is unavailable right now, so this was not saved ("+d.memory_error+")");
+    }
   }catch(err){wait.remove();add("err","Could not reach the server. It may be waking up, so try again in a minute.")}
-  $("b").disabled=false;$("t").focus();
-};
+  busy=false;$("b").disabled=false;$("t").focus();
+  if(reply)suggest(m,reply,my);
+}
+async function suggest(m,reply,my){
+  try{
+    const r=await fetch("/suggest",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid,message:m,reply:reply.slice(0,5000)})});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(my===turn&&!busy&&d.suggestions.length)setChips(d.suggestions);
+  }catch(e){}
+}
+$("f").onsubmit=e=>{e.preventDefault();send($("t").value)};
 </script></body></html>

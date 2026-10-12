@@ -10,14 +10,16 @@ from pydantic import BaseModel, Field
 
 from src import memory
 from src.graph import chat
+from src.suggest import next_prompts
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("kumbuka")
 
 ID = r"^[A-Za-z0-9_-]+$"
-RATE = int(os.getenv("CHAT_PER_HOUR", "30"))
+CHAT_RATE = int(os.getenv("CHAT_PER_HOUR", "30"))
+SUGGEST_RATE = int(os.getenv("SUGGEST_PER_HOUR", "60"))
 WEB = Path(__file__).resolve().parent.parent / "web"
-_hits: dict[str, deque] = defaultdict(deque)
+_hits: dict[tuple, deque] = defaultdict(deque)
 
 app = FastAPI(title="Kumbuka")
 
@@ -27,15 +29,19 @@ class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
 
 
-def _limit(request: Request) -> None:
+class SuggestIn(ChatIn):
+    reply: str = Field(min_length=1, max_length=6000)
+
+
+def _limit(request: Request, bucket: str, limit: int) -> None:
     fwd = request.headers.get("x-forwarded-for", "")
     ip = fwd.split(",")[0].strip() or (request.client.host if request.client else "unknown")
     now = time.time()
-    q = _hits[ip]
+    q = _hits[(bucket, ip)]
     while q and now - q[0] > 3600:
         q.popleft()
-    if len(q) >= RATE:
-        raise HTTPException(429, f"Limit reached: {RATE} messages per hour. Please try again later.")
+    if len(q) >= limit:
+        raise HTTPException(429, f"Limit reached: {limit} requests per hour. Please try again later.")
     q.append(now)
 
 
@@ -51,7 +57,7 @@ def health():
 
 @app.post("/chat")
 def chat_endpoint(body: ChatIn, request: Request):
-    _limit(request)
+    _limit(request, "chat", CHAT_RATE)
     try:
         return chat(body.user_id, body.message)
     except RuntimeError as e:
@@ -60,6 +66,16 @@ def chat_endpoint(body: ChatIn, request: Request):
     except Exception:
         log.exception("Unexpected chat error")
         raise HTTPException(500, "Unexpected error while chatting. Check the server logs.")
+
+
+@app.post("/suggest")
+def suggest_endpoint(body: SuggestIn, request: Request):
+    _limit(request, "suggest", SUGGEST_RATE)
+    try:
+        return {"suggestions": next_prompts(body.message, body.reply)}
+    except Exception as e:  # suggestions are optional, never an error for the user
+        log.warning("Suggestions failed: %s", e)
+        return {"suggestions": []}
 
 
 @app.get("/memories")

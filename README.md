@@ -2,8 +2,6 @@
 
 **An AI chat that remembers you.** *Kumbuka* means "remember" in Swahili.
 
-**Live demo:** https://YOUR-RENDER-ADDRESS
-(Free hosting: the first load can take up to a minute while the server wakes up. Please don't share sensitive information.)
 
 Tell Kumbuka about your tools, preferences, and projects. It extracts the lasting facts, stores them as vectors, and recalls the relevant ones in later conversations, even after you close the page.
 
